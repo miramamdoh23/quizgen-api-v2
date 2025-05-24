@@ -1,0 +1,507 @@
+[
+    {
+        "text": "Which of the following is a primary component of physical infrastructure according to the text?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Servers",
+        "explanation": "The text explicitly lists Servers as a main component of physical infrastructure.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Software"
+            },
+            {
+                "text": "Servers"
+            },
+            {
+                "text": "Applications"
+            },
+            {
+                "text": "Operating Systems"
+            }
+        ],
+        "page": "3",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Based on the text, which of the following technologies is most likely to be used for data storage in a physical infrastructure?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Storage",
+        "explanation": "The text directly mentions Storage as part of the physical infrastructure.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "CPU"
+            },
+            {
+                "text": "RAM"
+            },
+            {
+                "text": "Storage"
+            },
+            {
+                "text": "GPU"
+            }
+        ],
+        "page": "3",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "A company wants to improve the resilience and scalability of its server infrastructure. What technology is most likely used?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Virtualization",
+        "explanation": "Virtualization is a technology that facilitates resilience and scalability in server infrastructure by creating multiple virtual instances on a single physical server.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Data mining"
+            },
+            {
+                "text": "Virtualization"
+            },
+            {
+                "text": "Web development"
+            },
+            {
+                "text": "Project Management"
+            }
+        ],
+        "page": "3",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Considering the components listed in the text, what type of network is most likely used to connect servers and storage within the physical infrastructure?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Data Center Network",
+        "explanation": "Given that the listed components (servers, storage, network) are common in data centers, a Data Center Network is the most suitable option for connecting them.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Social Network"
+            },
+            {
+                "text": "Cellular Network"
+            },
+            {
+                "text": "Data Center Network"
+            },
+            {
+                "text": "Ad-hoc Network"
+            }
+        ],
+        "page": "3",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which of the following is directly mentioned as part of the physical infrastructure?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Servers",
+        "explanation": "The text explicitly lists Servers under Physical Infrastructure.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Networking"
+            },
+            {
+                "text": "Servers"
+            },
+            {
+                "text": "Virtual Machines"
+            },
+            {
+                "text": "Cloud Services"
+            }
+        ],
+        "page": "4",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Based on the context, which area would be MOST relevant to a server in a data center environment?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Virtualization",
+        "explanation": "Servers in data centers are frequently used to host virtual machines, making virtualization highly relevant.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Application Development"
+            },
+            {
+                "text": "Virtualization"
+            },
+            {
+                "text": "Graphic Design"
+            },
+            {
+                "text": "Mobile Computing"
+            }
+        ],
+        "page": "4",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which component is typically found in a server rack alongside rack servers?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Network devices",
+        "explanation": "The text mentions that network or storage area network devices are found in server racks along with rack servers.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Network devices"
+            },
+            {
+                "text": "Desktops"
+            },
+            {
+                "text": "Laptops"
+            },
+            {
+                "text": "Tablets"
+            }
+        ],
+        "page": "5",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Cables in rack servers primarily affect which two factors?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Cooling and network connectivity",
+        "explanation": "The text states that cables affect cooling and are required for networking.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Power consumption and processing speed"
+            },
+            {
+                "text": "Cooling and network connectivity"
+            },
+            {
+                "text": "Processing speed and network connectivity"
+            },
+            {
+                "text": "Power consumption and cooling"
+            }
+        ],
+        "page": "5",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "A rack server is primarily designed to be...?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Mounted in a server rack",
+        "explanation": "The text clearly defines a rack server as designed to be mounted in a server rack.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "A personal computer"
+            },
+            {
+                "text": "Easily portable"
+            },
+            {
+                "text": "Mounted in a server rack"
+            },
+            {
+                "text": "Used as a standalone device"
+            }
+        ],
+        "page": "5",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "If a data center is experiencing overheating issues, which of the following factors related to rack servers should be investigated first?",
+        "type": "MultipleChoice",
+        "correctAnswer": "The arrangement and management of cables",
+        "explanation": "The text explicitly mentions that cables can affect cooling. Therefore, cable management is a key factor in addressing overheating.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "The number of CPUs in each server"
+            },
+            {
+                "text": "The type of operating system used"
+            },
+            {
+                "text": "The arrangement and management of cables"
+            },
+            {
+                "text": "The physical size of the servers"
+            }
+        ],
+        "page": "5",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "A blade server chassis consolidates which of the following resources?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Power and cooling",
+        "explanation": "The text states Chassis provides consolidated resources such aspower, cooling and networking",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Processing power"
+            },
+            {
+                "text": "Memory"
+            },
+            {
+                "text": "Individual network controllers"
+            },
+            {
+                "text": "Power and cooling"
+            }
+        ],
+        "page": "6",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Blade servers always include a dedicated power supply for each blade.?",
+        "type": "TrueFalse",
+        "correctAnswer": "False",
+        "explanation": "The text states that the chassis provides consolidated resources such as power.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "True"
+            },
+            {
+                "text": "False"
+            }
+        ],
+        "page": "6",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which of the following is an advantage of blade servers compared to rack servers?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Simplified cabling structure",
+        "explanation": "The text mentions providing asimplified cabling structure as an advantage of blade servers.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Higher cost per server"
+            },
+            {
+                "text": "Larger physical footprint"
+            },
+            {
+                "text": "More complex cabling structure"
+            },
+            {
+                "text": "Simplified cabling structure"
+            }
+        ],
+        "page": "6",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "A Fibre Channel host bus adapter is a mandatory component of every blade server.?",
+        "type": "TrueFalse",
+        "correctAnswer": "False",
+        "explanation": "The text states Theblade might also include aFibre Channel host busadapter.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "True"
+            },
+            {
+                "text": "False"
+            }
+        ],
+        "page": "6",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which of the following is NOT an example of a physical resource abstracted by virtualization?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Software licenses",
+        "explanation": "Virtualization abstracts physical resources like compute, storage, and network, but not software licenses.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Software licenses"
+            },
+            {
+                "text": "Compute"
+            },
+            {
+                "text": "Storage"
+            },
+            {
+                "text": "Network"
+            }
+        ],
+        "page": "15",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "What is a key benefit of virtualization related to application execution?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Applications run unmodified",
+        "explanation": "Virtualization allows applications to run without modifications as they would on a real machine.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Applications require extensive modifications"
+            },
+            {
+                "text": "Applications run unmodified"
+            },
+            {
+                "text": "Applications run only on specific hardware"
+            },
+            {
+                "text": "Applications run slower"
+            }
+        ],
+        "page": "15",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "A virtual machine (VM) can be moved from one physical server to another. What benefit does this provide?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Improved resource utilization",
+        "explanation": "VM migration allows for better resource allocation and utilization by moving VMs to servers with available capacity.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Increased hardware costs"
+            },
+            {
+                "text": "Improved resource utilization"
+            },
+            {
+                "text": "Decreased security"
+            },
+            {
+                "text": "Reduced application compatibility"
+            }
+        ],
+        "page": "15",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which of the following is the primary goal of system virtualization?",
+        "type": "MultipleChoice",
+        "correctAnswer": "To abstract physical resources and present them as logical resources",
+        "explanation": "The primary goal of system virtualization is to abstract physical resources like compute, storage, and network, presenting them as logical resources.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "To increase the complexity of physical resources"
+            },
+            {
+                "text": "To create physical resources from logical ones"
+            },
+            {
+                "text": "To abstract physical resources and present them as logical resources"
+            },
+            {
+                "text": "To limit the functionality of applications"
+            }
+        ],
+        "page": "15",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "The primary function of a hypervisor is to?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Create and manage virtual machines",
+        "explanation": "The text states that the hypervisor enables the creation of multiple virtual machines.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Manage physical hardware directly"
+            },
+            {
+                "text": "Create and manage virtual machines"
+            },
+            {
+                "text": "Serve as the operating system"
+            },
+            {
+                "text": "Provide user interfaces"
+            }
+        ],
+        "page": "16",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Which of the following is true about system virtualization?",
+        "type": "TrueFalse",
+        "correctAnswer": "True",
+        "explanation": "System virtualization involves abstracting computing resources to create virtual machines, as indicated in the text.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "True"
+            },
+            {
+                "text": "False"
+            }
+        ],
+        "page": "16",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Paravirtualization offers better performance due to what primary reason?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Guest OS direct communication with hypervisor",
+        "explanation": "Because the guest OS directly communicates with the hypervisor, reducing the need for hardware emulation, paravirtualization offers better performance.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "Hardware emulation"
+            },
+            {
+                "text": "Guest OS direct communication with hypervisor"
+            },
+            {
+                "text": "Complex instruction set computing"
+            },
+            {
+                "text": "Limited IO operations"
+            }
+        ],
+        "page": "24",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "Xen is an example of a hypervisor that supports paravirtualization?",
+        "type": "TrueFalse",
+        "correctAnswer": "True",
+        "explanation": "The text explicitly states that Xen is a popular hypervisor that supports paravirtualization.",
+        "difficulty": "easy",
+        "options": [
+            {
+                "text": "True"
+            },
+            {
+                "text": "False"
+            }
+        ],
+        "page": "24",
+        "quiz_id": "quiz_001"
+    },
+    {
+        "text": "How does paravirtualization differ from full virtualization in handling IO operations?",
+        "type": "MultipleChoice",
+        "correctAnswer": "Paravirtualization handles IO operations more efficiently",
+        "explanation": "The text states that paravirtualization handles some hardware access, like IO operations, more efficiently compared to full virtualization.",
+        "difficulty": "medium",
+        "options": [
+            {
+                "text": "Paravirtualization requires more hardware emulation"
+            },
+            {
+                "text": "Paravirtualization handles IO operations less efficiently"
+            },
+            {
+                "text": "Paravirtualization handles IO operations more efficiently"
+            },
+            {
+                "text": "Paravirtualization does not handle IO operations"
+            }
+        ],
+        "page": "24",
+        "quiz_id": "quiz_001"
+    }
+]
