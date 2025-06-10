@@ -2,7 +2,8 @@ import os
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 import pdfplumber
-from google.generativeai import GenerativeModel, configure
+import google.generativeai as genai
+from google.generativeai import GenerativeModel
 import logging
 from pdf2image import convert_from_bytes
 import pytesseract
@@ -23,9 +24,65 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure the Gemini API key from environment variables
-configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = GenerativeModel("gemini-2.0-flash")
+# ===== تهيئة محسنة لـ Gemini API =====
+def initialize_gemini():
+    """
+    تهيئة محسنة لـ Gemini API مع معالجة أفضل للأخطاء
+    """
+    try:
+        # ===== ضع API Key الصحيح هنا =====
+        # احصل عليه من: https://makersuite.google.com/app/apikey
+        API_KEY = "AIzaSyAYfX0WJA2FXTeVw05l847TKw1Z_X2NnKQ"  # ⚠️ استبدل هذا بمفتاحك الصحيح
+        
+        # أو استخدم متغير البيئة
+        api_key = os.getenv("GOOGLE_API_KEY", API_KEY)
+        
+        # تحقق من صحة المفتاح
+        if not api_key or "YOUR_ACTUAL_API_KEY_HERE" in api_key:
+            logger.error("❌ Please set a valid Google API key!")
+            logger.error("Get your key from: https://makersuite.google.com/app/apikey")
+            return None
+        
+        # تهيئة Gemini
+        genai.configure(api_key=api_key)
+        
+        # إعدادات التوليد
+        generation_config = {
+            "temperature": 0.4,
+            "top_p": 0.9,
+            "top_k": 40,
+            "max_output_tokens": 4000,
+            "response_mime_type": "text/plain"
+        }
+        
+        # إنشاء الموديل
+        model = GenerativeModel("gemini-1.5-flash", generation_config=generation_config)
+        
+        # اختبار الاتصال
+        try:
+            test_response = model.generate_content("Say 'Connected' if you can read this.")
+            if test_response and test_response.text:
+                logger.info("✅ Gemini API initialized successfully!")
+                return model
+            else:
+                raise Exception("No response from API")
+        except Exception as test_error:
+            logger.error(f"❌ API connection test failed: {test_error}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize Gemini API: {e}")
+        return None
+
+# تهيئة الموديل عند بدء التطبيق
+model = None
+
+@app.on_event("startup")
+async def startup_event():
+    global model
+    model = initialize_gemini()
+    if not model:
+        logger.error("💥 Application started without valid Gemini API connection!")
 
 # Enhanced function to clean extracted text from OCR errors
 def clean_extracted_text(text):
@@ -50,8 +107,8 @@ def clean_extracted_text(text):
         r'THANK\s*["\']?\s*A\s*YOU': 'THANK YOU',
         r'ALWAYS\s+LEARNINC': 'ALWAYS LEARNING',
         r'pudiseconomies': 'diseconomies',
-        r'MANAGER(?:\s+MANAGER)+': 'MANAGER',  # Remove repeated MANAGER
-        r'Manager(?:\s+Manager)+': 'Manager',   # Remove repeated Manager
+        r'MANAGER(?:\s+MANAGER)+': 'MANAGER',
+        r'Manager(?:\s+Manager)+': 'Manager',
         
         # Academic terms
         r'PEARSON': 'Pearson',
@@ -60,12 +117,12 @@ def clean_extracted_text(text):
         r'Management': 'Management',
         
         # Common formatting issues
-        r'(\w)\s*-\s*(\w)': r'\1-\2',  # Fix hyphenated words
-        r'([a-z])([A-Z])': r'\1 \2',   # Add space between camelCase
-        r'\b(\d+)\s*\.\s*(\d+)\b': r'\1.\2',  # Fix decimal numbers
+        r'(\w)\s*-\s*(\w)': r'\1-\2',
+        r'([a-z])([A-Z])': r'\1 \2',
+        r'\b(\d+)\s*\.\s*(\d+)\b': r'\1.\2',
         
         # Remove excessive repetition
-        r'(\b\w+\b)(?:\s+\1){2,}': r'\1',  # Remove word repeated 3+ times
+        r'(\b\w+\b)(?:\s+\1){2,}': r'\1',
     }
     
     # Apply corrections
@@ -275,6 +332,12 @@ def generate_ai_questions(content: str, page_num: int, content_analysis: Dict) -
     """
     Generate questions using AI with enhanced prompts based on content analysis.
     """
+    global model
+    
+    if not model:
+        logger.error("❌ Gemini model not initialized!")
+        return []
+    
     try:
         # Determine number of questions based on content quality
         num_questions = {
@@ -326,15 +389,7 @@ QUALITY STANDARDS:
 Generate exactly {num_questions} question(s):
 """
 
-        generation_config = {
-            "temperature": 0.4,  # Lower temperature for more consistent formatting
-            "top_p": 0.9,
-            "top_k": 40,
-            "max_output_tokens": 2000,
-            "response_mime_type": "text/plain"
-        }
-
-        response = model.generate_content(prompt, generation_config=generation_config)
+        response = model.generate_content(prompt)
         raw_response = response.text.strip()
         
         questions = parse_enhanced_ai_response(raw_response, page_num)
@@ -629,4 +684,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
