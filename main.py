@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 import difflib
 import re
+import json
+from typing import List, Dict, Any
 
 # Create a FastAPI application to provide an API interface
 app = FastAPI()
@@ -25,410 +27,606 @@ logger = logging.getLogger(__name__)
 configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = GenerativeModel("gemini-2.0-flash")
 
-# Function to clean extracted text from OCR errors
+# Enhanced function to clean extracted text from OCR errors
 def clean_extracted_text(text):
     """
-    Clean the extracted text to fix common OCR errors.
-    - Correct common OCR mistakes like 'WaTcuiIne' to 'Watching'.
-    - Remove extra spaces and normalize text.
+    Enhanced text cleaning with comprehensive OCR error corrections.
     """
-    text = re.sub(r'\s+', ' ', text.strip())  # Normalize spaces
-    text = re.sub(r'[wW][aA][tT][cC][uU][iI][nN][eE]', 'Watching', text, flags=re.IGNORECASE)  # Fix 'waTcuiIne' to 'Watching'
-    text = re.sub(r'THANK “A YOU', 'THANK YOU', text, flags=re.IGNORECASE)  # Fix 'THANK “A YOU' to 'THANK YOU'
+    if not text or not text.strip():
+        return text
+    
+    # Normalize spaces first
+    text = re.sub(r'\s+', ' ', text.strip())
+    
+    # Comprehensive OCR corrections dictionary
+    corrections = {
+        # University name corrections
+        r'THE\s+EGFPTIANE[-\s]*LEARNING\s*UNIVERSITY': 'THE EGYPTIAN E-LEARNING UNIVERSITY',
+        r'EGFPTIANE[-\s]*LEARNING': 'EGYPTIAN E-LEARNING',
+        r'E[-\s]*LEARNING\s*UNIVERSITY': 'E-LEARNING UNIVERSITY',
+        
+        # Common OCR mistakes
+        r'[wW][aA][tT][cC][uU][iI][nN][eE]': 'Watching',
+        r'THANK\s*["\']?\s*A\s*YOU': 'THANK YOU',
+        r'ALWAYS\s+LEARNINC': 'ALWAYS LEARNING',
+        r'pudiseconomies': 'diseconomies',
+        r'MANAGER(?:\s+MANAGER)+': 'MANAGER',  # Remove repeated MANAGER
+        r'Manager(?:\s+Manager)+': 'Manager',   # Remove repeated Manager
+        
+        # Academic terms
+        r'PEARSON': 'Pearson',
+        r'Departmentalization': 'Departmentalization',
+        r'Organizational': 'Organizational',
+        r'Management': 'Management',
+        
+        # Common formatting issues
+        r'(\w)\s*-\s*(\w)': r'\1-\2',  # Fix hyphenated words
+        r'([a-z])([A-Z])': r'\1 \2',   # Add space between camelCase
+        r'\b(\d+)\s*\.\s*(\d+)\b': r'\1.\2',  # Fix decimal numbers
+        
+        # Remove excessive repetition
+        r'(\b\w+\b)(?:\s+\1){2,}': r'\1',  # Remove word repeated 3+ times
+    }
+    
+    # Apply corrections
+    for pattern, replacement in corrections.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    
+    # Clean up extra spaces again after corrections
+    text = re.sub(r'\s+', ' ', text.strip())
+    
     return text
 
-# Function to preprocess images before OCR
+# Enhanced function to preprocess images before OCR
 def preprocess_image_for_ocr(image):
     """
-    Enhance image quality to improve OCR accuracy.
-    - If the image is a PIL Image, convert it to OpenCV format.
-    - Convert the image to grayscale, apply CLAHE for contrast enhancement, and remove noise.
-    - Return the processed image.
+    Advanced image preprocessing for better OCR accuracy.
     """
     try:
         if isinstance(image, Image.Image):
             img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         else:
             img = image
+        
+        # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)  # Enhance contrast
-        denoised = cv2.fastNlMeansDenoising(enhanced)  # Remove noise
-        _, binary = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)  # Convert to black and white
-        processed_image = Image.fromarray(binary)
+        
+        # Apply multiple enhancement techniques
+        # 1. CLAHE for contrast enhancement
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        
+        # 2. Noise reduction
+        denoised = cv2.fastNlMeansDenoising(enhanced, h=10)
+        
+        # 3. Sharpening kernel
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        sharpened = cv2.filter2D(denoised, -1, kernel)
+        
+        # 4. Adaptive threshold for better text separation
+        binary = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                     cv2.THRESH_BINARY, 11, 2)
+        
+        # 5. Morphological operations to clean up
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+        cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+        
+        processed_image = Image.fromarray(cleaned)
         return processed_image
+        
     except Exception as e:
-        logger.error(f"Error in image preprocessing: {e}")
+        logger.error(f"Error in advanced image preprocessing: {e}")
         return image
 
-# Function to extract text from a PDF file
+# Enhanced text extraction with better error handling
 async def extract_text_from_pdf(file):
     """
-    Extract text from a PDF file using pdfplumber and Tesseract for images.
-    - Validate the file type by checking the extension.
-    - Extract text from pages.
-    - If text extraction fails, use OCR on images.
-    - Clean the extracted text to fix OCR errors.
-    - Return the extracted text and the number of pages.
+    Enhanced PDF text extraction with improved OCR and error handling.
     """
     try:
-        # Check file extension instead of using magic
         file_extension = os.path.splitext(file.filename.lower())[1]
         if file_extension != '.pdf':
             raise ValueError(f"Uploaded file is not a PDF. Detected extension: {file_extension}")
 
         await file.seek(0)
         file_bytes = await file.read()
-
-        await file.seek(0)
         text = ""
-        with pdfplumber.open(file.file) as pdf:
+        
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             total_pages = len(pdf.pages)
+            
+            # Convert all pages to images once for OCR
+            try:
+                images = convert_from_bytes(file_bytes, dpi=400, fmt='PNG')
+            except Exception as e:
+                logger.warning(f"PDF to image conversion failed: {e}")
+                images = []
+            
             for page_num, page in enumerate(pdf.pages):
-                page_text = page.extract_text()
-                if page_text and page_text.strip():
-                    cleaned_text = clean_extracted_text(page_text)  # Apply cleaning here
-                    text += f"<PAGE{page_num + 1}>\n<CONTENT_FROM_OCR>\n{cleaned_text}\n</CONTENT_FROM_OCR>\n</PAGE{page_num + 1}>\n"
-                else:
-                    await file.seek(0)
-                    images = convert_from_bytes(file_bytes)
-                    if page_num < len(images):
+                logger.info(f"Processing page {page_num + 1}/{total_pages}")
+                
+                # Extract text using pdfplumber
+                page_text = ""
+                try:
+                    page_text = page.extract_text() or ""
+                    if page_text:
+                        page_text = clean_extracted_text(page_text)
+                        logger.info(f"Direct text extraction from page {page_num + 1}: {len(page_text)} chars")
+                except Exception as e:
+                    logger.warning(f"Direct text extraction failed for page {page_num + 1}: {e}")
+                
+                # OCR extraction
+                ocr_text = ""
+                if page_num < len(images):
+                    try:
                         img = images[page_num]
                         processed_img = preprocess_image_for_ocr(img)
-                        img_text = pytesseract.image_to_string(
-                            processed_img,
-                            config='--oem 3 --psm 6'
-                        )
-                        if img_text.strip():
-                            cleaned_text = clean_extracted_text(img_text)  # Apply cleaning here
-                            text += f"<PAGE{page_num + 1}>\n<CONTENT_FROM_OCR>\n{cleaned_text}\n</CONTENT_FROM_OCR>\n</PAGE{page_num + 1}>\n"
+                        
+                        # Multiple OCR configurations for better results
+                        ocr_configs = [
+                            '--oem 1 --psm 6 -c preserve_interword_spaces=1 --dpi 400',
+                            '--oem 1 --psm 4 -c preserve_interword_spaces=1 --dpi 400',
+                            '--oem 1 --psm 3 -c preserve_interword_spaces=1 --dpi 400'
+                        ]
+                        
+                        best_ocr = ""
+                        for config in ocr_configs:
+                            try:
+                                current_ocr = pytesseract.image_to_string(processed_img, config=config)
+                                if len(current_ocr) > len(best_ocr):
+                                    best_ocr = current_ocr
+                            except:
+                                continue
+                        
+                        if best_ocr:
+                            ocr_text = clean_extracted_text(best_ocr)
+                            logger.info(f"OCR text from page {page_num + 1}: {len(ocr_text)} chars")
+                        
+                    except Exception as ocr_error:
+                        logger.warning(f"OCR failed for page {page_num + 1}: {ocr_error}")
+                
+                # Combine and choose the best text
+                final_text = ""
+                if page_text and ocr_text:
+                    # Use similarity to determine which text is better
+                    if len(ocr_text) > len(page_text) * 1.5:  # OCR significantly longer
+                        final_text = ocr_text
+                    elif len(page_text) > 50:  # Direct extraction has substantial content
+                        final_text = page_text
+                    else:
+                        # Combine both
+                        final_text = f"{page_text} {ocr_text}".strip()
+                elif page_text:
+                    final_text = page_text
+                elif ocr_text:
+                    final_text = ocr_text
+                
+                # Final cleaning
+                if final_text:
+                    final_text = clean_extracted_text(final_text)
+                    # Remove excessive whitespace and normalize
+                    final_text = re.sub(r'\n\s*\n', '\n', final_text)
+                    final_text = re.sub(r'[ \t]+', ' ', final_text)
+                
+                # Add to main text with page markers
+                if final_text.strip():
+                    text += f"<PAGE{page_num + 1}>\n<CONTENT>\n{final_text.strip()}\n</CONTENT>\n</PAGE{page_num + 1}>\n"
+                else:
+                    text += f"<PAGE{page_num + 1}>\n<CONTENT>\nNo readable text found on this page.\n</CONTENT>\n</PAGE{page_num + 1}>\n"
 
         if not text.strip():
-            raise ValueError("Unable to extract text from the PDF, even with OCR.")
-
+            raise ValueError("Unable to extract any text from the PDF.")
+            
         return text, total_pages
+        
     except Exception as e:
         logger.error(f"Error in extracting text from PDF: {e}")
         raise
 
-# Function to rephrase a question
-def rephrase_question(original_question):
+# Enhanced content analysis for better question generation
+def analyze_content_quality(content: str) -> Dict[str, Any]:
     """
-    Rephrase the given question to provide a different wording while preserving the meaning.
-    Uses Gemini to generate alternative phrasing.
+    Analyze content quality to determine appropriate question generation strategy.
     """
-    rephrase_prompt = f"""
-    Rephrase the following question while keeping the meaning intact and ensuring it remains a valid quiz question. Do not change the topic or intent:
-    {original_question}
-    Provide only the rephrased question ending with '?'.
-    """
-    generation_config = {
-        "temperature": 0.8,
-        "top_p": 0.95,
-        "top_k": 40,
-        "max_output_tokens": 100,
-        "response_mime_type": "text/plain"
+    if not content or not content.strip():
+        return {"quality": "empty", "word_count": 0, "key_terms": [], "has_numbers": False}
+    
+    words = content.strip().split()
+    word_count = len(words)
+    
+    # Extract key terms (meaningful words)
+    key_terms = []
+    numbers = []
+    
+    for word in words:
+        clean_word = re.sub(r'[^\w]', '', word.lower())
+        if len(clean_word) > 3 and clean_word.isalpha():
+            key_terms.append(clean_word)
+        elif clean_word.isdigit() and 1 <= len(clean_word) <= 4:
+            numbers.append(clean_word)
+    
+    # Remove duplicates while preserving order
+    key_terms = list(dict.fromkeys(key_terms))
+    numbers = list(dict.fromkeys(numbers))
+    
+    # Determine content quality
+    quality = "empty"
+    if word_count >= 100:
+        quality = "high"
+    elif word_count >= 50:
+        quality = "medium"
+    elif word_count >= 20:
+        quality = "low"
+    elif word_count >= 5:
+        quality = "minimal"
+    
+    return {
+        "quality": quality,
+        "word_count": word_count,
+        "key_terms": key_terms[:10],  # Top 10 key terms
+        "numbers": numbers[:5],       # Top 5 numbers
+        "has_academic_content": any(term in content.lower() for term in 
+                                  ['management', 'organization', 'structure', 'department', 
+                                   'strategy', 'planning', 'control', 'process'])
     }
-    response = model.generate_content(rephrase_prompt, generation_config=generation_config)
-    rephrased_text = response.text.strip()
-    if rephrased_text and rephrased_text.endswith('?'):
-        return rephrased_text
-    return original_question  # Fallback to original if rephrasing fails
 
-# Function to generate questions based on extracted text
-def generate_questions_for_page(page_text, page_num):
+# Enhanced AI question generation with better prompts
+def generate_ai_questions(content: str, page_num: int, content_analysis: Dict) -> List[Dict]:
     """
-    Generate educational quiz questions based on the text of a specific page using Gemini.
-    - Generate Type 1 (Multiple Choice) and Type 2 (True/False) questions.
-    - Number of questions should vary based on the amount of significant content in the page.
-    - Distribute difficulty levels: ~20% easy, 50% medium, 30% hard, adjusting based on content depth.
-    - Avoid using phrases like 'according to the text' in the question text.
-    - Do not generate questions about introductions or instructor names.
-    - Ensure all significant information is covered without missing important details.
-    - Return a list of questions in JSON format with type as 1 for MCQ or 2 for True/False, and quiz_id as int.
+    Generate questions using AI with enhanced prompts based on content analysis.
     """
     try:
-        full_prompt = f"""
-        You are an AI assistant tasked with generating quiz questions based on the provided text from a PDF page. The text is enclosed within <PAGE{page_num}> and </PAGE{page_num}> tags, with the content inside <CONTENT_FROM_OCR> and </CONTENT_FROM_OCR> tags. Generate quiz questions that are analytical, application-based, or comparative, focusing on specific details, examples, or technical concepts from the text. Follow these rules:
+        # Determine number of questions based on content quality
+        num_questions = {
+            "high": 3,
+            "medium": 2,
+            "low": 1,
+            "minimal": 1,
+            "empty": 0
+        }.get(content_analysis["quality"], 1)
+        
+        if num_questions == 0:
+            return []
+        
+        # Create context-aware prompt
+        prompt = f"""
+You are an educational assessment expert. Generate {num_questions} high-quality quiz questions based on the following academic content.
 
-        - Generate Type 1 (Multiple Choice) questions with exactly 4 options each, and Type 2 (True/False) questions with exactly 2 options ('True', 'False').
-        - The number of questions should vary based on the amount of significant content in the page: generate more questions (up to 5 total, mixing MCQ and True/False) for pages with a lot of detailed or technical content, and fewer questions (1 or 2) for pages with less content. Do NOT force a fixed number of questions per page.
-        - Distribute the questions across difficulty levels: approximately 20% easy (simple recall or basic understanding), 50% medium (application or analysis), and 30% hard (synthesis or complex problem-solving), based on the content's depth. Adjust the distribution if the content is limited, prioritizing medium difficulty.
-        - Do NOT generate questions about introductory sections (e.g., 'Introduction', 'Overview') or about instructor names (e.g., 'Instructor: Dr. John Doe', 'taught by Professor Smith').
-        - Ensure all significant and technical information in the page is covered by the questions without missing important details, but avoid focusing on repetitive or trivial information.
-        - Aim to challenge learners with a mix of difficulty levels, requiring synthesis, application, or analysis for medium and hard questions, and basic understanding for easy questions.
-        - Do NOT use phrases like 'according to the text', 'as per the text', or similar in the question text to ensure natural and engaging phrasing; instead, ensure the explanation ties the answer back to the document content.
-        - Avoid simple recall questions like 'What is X described as?' or 'What does X represent?' for medium or hard levels unless they lead to deeper understanding (e.g., application or comparison).
-        - Do NOT generate generic or broad questions like 'What is the main focus?' unless explicitly stated in the text.
-        - Do NOT include any introductory statements such as subject names or additional context beyond the text provided.
-        - If the text is short or unclear, infer meaningful questions directly from the available content without adding external assumptions.
+CONTENT:
+{content}
 
-        Each question must include:
-        - A question text ending with '?' and focused solely on the provided text, without phrases like 'according to the text'
-        - A type: use '1' for MultipleChoice or '2' for True/False
-        - For type 1 (MultipleChoice): 4 options separated by commas
-        - For type 2 (True/False): 2 options ('True', 'False') separated by commas
-        - A correct answer
-        - An explanation based only on the provided text (do NOT start with 'explanation: ')
-        - A difficulty level: 'easy', 'medium', or 'hard'
-        - The page number
-        - A quiz_id: an integer value (e.g., 1)
+GUIDELINES:
+1. Generate questions in ENGLISH ONLY
+2. Create questions at different difficulty levels (easy, medium, hard)
+3. Focus on understanding, application, and analysis - not just memorization
+4. Avoid generic questions like "What is mentioned on this page?"
+5. Make questions specific to the actual content provided
+6. Use variety: multiple choice (Type 1) and true/false (Type 2)
 
-        Format each question as a bullet point starting with '- ' followed by the question text, then '(Type: 1, option1, option2, option3, option4 | CorrectAnswer: answer | explanation | Difficulty: level | quiz_id: number)' for MCQ, or '(Type: 2, True, False | CorrectAnswer: answer | explanation | Difficulty: level | quiz_id: number)' for True/False.
+QUESTION TYPES:
+- Type 1: Multiple choice with 4 options
+- Type 2: True/False
 
-        Text to analyze:
-        {page_text}
-        """
+FORMAT REQUIREMENTS:
+For each question, use this EXACT format:
+Question: [question text]?
+Type: [1 or 2]
+Options: [option1, option2, option3, option4] (for Type 1) OR [True, False] (for Type 2)
+Answer: [correct answer]
+Explanation: [why this answer is correct]
+Difficulty: [easy/medium/hard]
+Page: {page_num}
+
+QUALITY STANDARDS:
+- Questions should test comprehension and critical thinking
+- Avoid questions that can be answered without reading the content
+- Make distractors plausible but clearly incorrect
+- Ensure explanations add educational value
+
+Generate exactly {num_questions} question(s):
+"""
 
         generation_config = {
-            "temperature": 0.7,  # Control the diversity of responses
-            "top_p": 0.95,
+            "temperature": 0.4,  # Lower temperature for more consistent formatting
+            "top_p": 0.9,
             "top_k": 40,
-            "max_output_tokens": 4000,
+            "max_output_tokens": 2000,
             "response_mime_type": "text/plain"
         }
 
-        response = model.generate_content(
-            full_prompt,
-            generation_config=generation_config
-        )
-
+        response = model.generate_content(prompt, generation_config=generation_config)
         raw_response = response.text.strip()
-        lines = raw_response.split('\n')
-        questions = []
-        current_question = []
-        seen_questions = {}  # To track seen question texts and their rephrased versions
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            if line.startswith('- ') and current_question:
-                question_text = ' '.join(current_question)
-                try:
-                    if "? (" not in question_text:
-                        logger.warning(f"Invalid question format: {question_text}")
-                        current_question = [line[2:]]
-                        continue
-
-                    q_text = question_text.split('? (')[0] + '?'
-                    question_type_info = question_text.split('? (')[1].rstrip(')')
-                    parts = question_type_info.split(' | ')
-                    if len(parts) != 5:  # Ensure all fields are present
-                        logger.warning(f"Invalid question structure: {question_text}")
-                        current_question = [line[2:]]
-                        continue
-
-                    question_type = parts[0]
-                    correct_answer = parts[1].replace("CorrectAnswer: ", "").strip()
-                    explanation = parts[2].strip().replace("explanation: ", "")  # Remove redundant prefix
-                    difficulty = parts[3].replace("Difficulty: ", "").strip()
-                    quiz_id_part = parts[4].replace("quiz_id: ", "").strip()
-                    quiz_id = int(quiz_id_part) if quiz_id_part.isdigit() else 1
-
-                    # Validate question type and options
-                    if question_type.startswith("Type: 1,"):
-                        options = [opt.strip() for opt in question_type.replace("Type: 1,", "").split(',')]
-                        if len(options) != 4:
-                            logger.warning(f"Incorrect number of options for MCQ (must be 4, found {len(options)}): {question_text}")
-                            current_question = [line[2:]]
-                            continue
-                    elif question_type.startswith("Type: 2,"):
-                        options = [opt.strip() for opt in question_type.replace("Type: 2,", "").split(',')]
-                        if len(options) != 2 or options != ["True", "False"]:
-                            logger.warning(f"Incorrect options for True/False (must be 'True, False', found {options}): {question_text}")
-                            current_question = [line[2:]]
-                            continue
-                    else:
-                        logger.warning(f"Invalid question type: {question_type}")
-                        current_question = [line[2:]]
-                        continue
-
-                    # Skip questions with 'according to the text' or similar phrases
-                    if any(phrase in q_text.lower() for phrase in ["according to the text", "as per the text", "in the text"]):
-                        current_question = [line[2:]]
-                        continue
-
-                    # Skip simple recall questions for medium/hard unless they lead to deeper understanding
-                    if difficulty in ["medium", "hard"] and ("described as" in q_text.lower() or "represent" in q_text.lower()) and not ("how" in q_text.lower() or "why" in q_text.lower() or "compare" in q_text.lower()):
-                        current_question = [line[2:]]
-                        continue
-
-                    # Skip if the question seems too generic
-                    if "main focus" in q_text.lower() and "focus" not in page_text.lower():
-                        current_question = [line[2:]]
-                        continue
-
-                    # Rephrase if the question is a duplicate
-                    if q_text.lower() in seen_questions:
-                        logger.info(f"Rephrasing duplicate question: {q_text}")
-                        q_text = rephrase_question(q_text)
-                        # Ensure the rephrased question isn't already seen
-                        attempt = 0
-                        original_q_text = q_text
-                        while q_text.lower() in seen_questions and attempt < 3:
-                            q_text = rephrase_question(original_q_text)
-                            attempt += 1
-                        if q_text.lower() in seen_questions:
-                            continue  # Skip if rephrasing fails after 3 attempts
-
-                    seen_questions[q_text.lower()] = True  # Add rephrased question to seen questions
-
-                    question = {
-                        "text": q_text,
-                        "type": 1 if question_type.startswith("Type: 1,") else 2,
-                        "options": [{"text": opt} for opt in options],
-                        "correctAnswer": correct_answer,
-                        "explanation": explanation,
-                        "difficulty": difficulty,
-                        "page": str(page_num),
-                        "quiz_id": quiz_id
-                    }
-
-                    questions.append(question)
-                    current_question = [line[2:]]
-                except Exception as e:
-                    logger.error(f"Error in parsing question: {question_text}, Error: {e}")
-                    current_question = [line[2:]]
-                    continue
-            else:
-                current_question.append(line[2:] if line.startswith('- ') else line)
-
-        # Fallback with diverse analytical Type 1 and Type 2 questions across difficulty levels if no questions are generated
-        if not questions:
-            fallback_questions = [
-                {
-                    "text": "What is the primary purpose of namespaces in RDF?",
-                    "type": 1,
-                    "options": [{"text": "To create unique identifiers"}, {"text": "To encrypt data"}, {"text": "To design websites"}, {"text": "To manage databases"}],
-                    "correctAnswer": "To create unique identifiers",
-                    "explanation": "The text likely discusses RDF, where namespaces are used to ensure unique identifiers.",
-                    "difficulty": "easy",
-                    "page": str(page_num),
-                    "quiz_id": 1
-                },
-                {
-                    "text": "How might namespaces resolve conflicts in datasets?",
-                    "type": 1,
-                    "options": [{"text": "By providing unique contexts"}, {"text": "By deleting duplicate data"}, {"text": "By increasing storage"}, {"text": "By slowing processing"}],
-                    "correctAnswer": "By providing unique contexts",
-                    "explanation": "The text suggests namespaces offer unique contexts to distinguish between names.",
-                    "difficulty": "medium",
-                    "page": str(page_num),
-                    "quiz_id": 1
-                },
-                {
-                    "text": "How could namespaces impact the scalability of a large RDF system?",
-                    "type": 1,
-                    "options": [{"text": "By limiting the number of resources"}, {"text": "By enhancing scalability through unique identification"}, {"text": "By requiring additional hardware"}, {"text": "By reducing data accuracy"}],
-                    "correctAnswer": "By enhancing scalability through unique identification",
-                    "explanation": "The text implies that unique identifiers via namespaces support scalability in complex RDF systems.",
-                    "difficulty": "hard",
-                    "page": str(page_num),
-                    "quiz_id": 1
-                },
-                {
-                    "text": "Namespaces are optional in RDF data integration.",
-                    "type": 2,
-                    "options": [{"text": "True"}, {"text": "False"}],
-                    "correctAnswer": "False",
-                    "explanation": "The text likely indicates that namespaces are essential for avoiding ambiguity in RDF.",
-                    "difficulty": "easy",
-                    "page": str(page_num),
-                    "quiz_id": 1
-                },
-                {
-                    "text": "Can namespaces improve data interoperability in RDF systems?",
-                    "type": 2,
-                    "options": [{"text": "True"}, {"text": "False"}],
-                    "correctAnswer": "True",
-                    "explanation": "The text highlights that namespaces ensure resources are uniquely identified, aiding interoperability.",
-                    "difficulty": "medium",
-                    "page": str(page_num),
-                    "quiz_id": 1
-                }
-            ]
-
-            # Add a random fallback question if no questions are generated
-            questions.append(random.choice(fallback_questions))
-
-        return questions
+        
+        questions = parse_enhanced_ai_response(raw_response, page_num)
+        
+        if questions:
+            logger.info(f"Generated {len(questions)} AI questions for page {page_num}")
+            return questions
+        else:
+            logger.warning(f"AI question parsing failed for page {page_num}")
+            return []
+        
     except Exception as e:
-        logger.error(f"Error in generating questions for page {page_num}: {e}")
-        # Ultimate fallback to ensure at least 1 question is returned
-        fallback_question = {
-            "text": "What is the primary purpose of namespaces in RDF?",
+        logger.error(f"AI question generation failed for page {page_num}: {e}")
+        return []
+
+def parse_enhanced_ai_response(raw_response: str, page_num: int) -> List[Dict]:
+    """
+    Parse AI response with enhanced error handling and validation.
+    """
+    questions = []
+    
+    # Split by "Question:" to get individual questions
+    question_blocks = raw_response.split("Question:")
+    
+    for block in question_blocks[1:]:  # Skip first empty block
+        try:
+            lines = [line.strip() for line in block.strip().split('\n') if line.strip()]
+            if len(lines) < 5:
+                continue
+            
+            # Parse components
+            question_text = lines[0].rstrip('?') + '?'
+            
+            question_data = {}
+            for line in lines[1:]:
+                if line.startswith("Type:"):
+                    question_data["type"] = int(line.split(":")[1].strip())
+                elif line.startswith("Options:"):
+                    options_str = line.split(":", 1)[1].strip()
+                    # Parse options - remove brackets and split by comma
+                    options_str = options_str.strip('[]')
+                    options = [opt.strip().strip('"\'') for opt in options_str.split(',')]
+                    question_data["options"] = [{"text": opt} for opt in options if opt]
+                elif line.startswith("Answer:"):
+                    question_data["correctAnswer"] = line.split(":", 1)[1].strip()
+                elif line.startswith("Explanation:"):
+                    question_data["explanation"] = line.split(":", 1)[1].strip()
+                elif line.startswith("Difficulty:"):
+                    question_data["difficulty"] = line.split(":", 1)[1].strip().lower()
+            
+            # Validate question data
+            if (question_text and 
+                question_data.get("type") in [1, 2] and 
+                question_data.get("options") and 
+                question_data.get("correctAnswer") and 
+                question_data.get("explanation")):
+                
+                question = {
+                    "text": question_text,
+                    "type": question_data["type"],
+                    "options": question_data["options"],
+                    "correctAnswer": question_data["correctAnswer"],
+                    "explanation": question_data["explanation"],
+                    "difficulty": question_data.get("difficulty", "medium"),
+                    "page": str(page_num),
+                    "quiz_id": page_num
+                }
+                
+                # Additional validation
+                if question_data["type"] == 1 and len(question_data["options"]) == 4:
+                    questions.append(question)
+                elif question_data["type"] == 2 and len(question_data["options"]) == 2:
+                    questions.append(question)
+                
+        except Exception as e:
+            logger.warning(f"Failed to parse question block: {e}")
+            continue
+    
+    return questions
+
+# Enhanced fallback question generation
+def generate_content_based_questions(content: str, page_num: int, content_analysis: Dict) -> List[Dict]:
+    """
+    Generate questions based on content analysis when AI fails.
+    """
+    questions = []
+    
+    if content_analysis["has_academic_content"]:
+        # Generate academic-focused questions
+        academic_terms = ["management", "organization", "structure", "department", 
+                         "strategy", "planning", "control", "process"]
+        
+        found_terms = [term for term in academic_terms if term in content.lower()]
+        
+        if found_terms:
+            term = found_terms[0]
+            question = {
+                "text": f"Which concept is discussed in relation to {term} in this content?",
+                "type": 1,
+                "options": [
+                    {"text": term.capitalize()},
+                    {"text": "Financial Analysis"},
+                    {"text": "Market Research"},
+                    {"text": "Product Development"}
+                ],
+                "correctAnswer": term.capitalize(),
+                "explanation": f"The content discusses concepts related to {term}",
+                "difficulty": "medium",
+                "page": str(page_num),
+                "quiz_id": page_num
+            }
+            questions.append(question)
+    
+    # Generate questions from key terms
+    if content_analysis["key_terms"]:
+        key_term = content_analysis["key_terms"][0]
+        question = {
+            "text": f"What key term is prominently featured in this content?",
             "type": 1,
-            "options": [{"text": "To create unique identifiers"}, {"text": "To encrypt data"}, {"text": "To design websites"}, {"text": "To manage databases"}],
-            "correctAnswer": "To create unique identifiers",
-            "explanation": "The text likely discusses RDF, where namespaces are used to ensure unique identifiers.",
+            "options": [
+                {"text": key_term.capitalize()},
+                {"text": "Innovation"},
+                {"text": "Technology"},
+                {"text": "Competition"}
+            ],
+            "correctAnswer": key_term.capitalize(),
+            "explanation": f"The term '{key_term}' appears prominently in the content",
             "difficulty": "easy",
             "page": str(page_num),
-            "quiz_id": 1
+            "quiz_id": page_num
         }
-        return [fallback_question]
+        questions.append(question)
+    
+    return questions
 
-# Main endpoint to generate quiz questions
+# Enhanced main question generation function
+def generate_questions_from_content(content: str, page_num: int) -> List[Dict]:
+    """
+    Main function to generate questions with enhanced logic and fallbacks.
+    """
+    try:
+        # Analyze content quality
+        content_analysis = analyze_content_quality(content)
+        logger.info(f"Page {page_num} analysis: {content_analysis}")
+        
+        # Skip empty or very poor content
+        if content_analysis["quality"] == "empty":
+            return []
+        
+        # Try AI generation first for good quality content
+        if content_analysis["quality"] in ["high", "medium"]:
+            questions = generate_ai_questions(content, page_num, content_analysis)
+            if questions:
+                return questions
+        
+        # Fallback to content-based questions
+        return generate_content_based_questions(content, page_num, content_analysis)
+        
+    except Exception as e:
+        logger.error(f"Error in generate_questions_from_content for page {page_num}: {e}")
+        return []
+
+# Enhanced duplicate detection
+def is_duplicate_content(content1: str, content2: str, threshold: float = 0.85) -> bool:
+    """
+    Enhanced duplicate detection with better similarity measures.
+    """
+    if not content1 or not content2:
+        return False
+    
+    if len(content1) < 20 or len(content2) < 20:
+        return False
+    
+    # Multiple similarity measures
+    sequence_similarity = difflib.SequenceMatcher(None, content1, content2).ratio()
+    
+    # Word-based similarity
+    words1 = set(content1.lower().split())
+    words2 = set(content2.lower().split())
+    
+    if not words1 or not words2:
+        return False
+    
+    word_similarity = len(words1.intersection(words2)) / len(words1.union(words2))
+    
+    # Combined similarity score
+    combined_similarity = (sequence_similarity + word_similarity) / 2
+    
+    return combined_similarity > threshold
+
+# Main endpoint with enhanced processing
 @app.post("/generate-quiz")
 async def generate_quiz(file: UploadFile = File(...)):
     """
-    Endpoint that receives a PDF file and returns educational quiz questions.
-    - Extracts text from the file.
-    - Generates questions using the generate_questions_for_page function.
-    - Returns the result in JSON format.
+    Enhanced endpoint with better processing and error handling.
     """
     try:
+        logger.info(f"Processing file: {file.filename}")
+        
+        # Extract text with enhanced processing
         extracted_text, total_pages = await extract_text_from_pdf(file)
+        
         all_questions = []
-        pages_text = extracted_text.split('</PAGE')
-        seen_pages = {}
-
-        for page_text in pages_text:
-            if '<PAGE' not in page_text:
+        pages_content = {}
+        processed_pages = set()
+        
+        # Parse pages
+        page_blocks = extracted_text.split('</PAGE')
+        
+        for block in page_blocks:
+            if '<PAGE' not in block:
                 continue
-
-            page_num = int(page_text.split('<PAGE')[1].split('>')[0])
-            page_content = page_text.split('<CONTENT_FROM_OCR>\n')[1].split('\n</CONTENT_FROM_OCR>')[0].strip()
-
-            is_duplicate = False
-            for seen_page_num, seen_content in seen_pages.items():
-                similarity = difflib.SequenceMatcher(None, page_content, seen_content).ratio()
-                if similarity > 0.95:
-                    logger.info(f"Skipping duplicate page {page_num}, similar to page {seen_page_num}")
-                    is_duplicate = True
-                    break
-
-            if is_duplicate:
+            
+            try:
+                page_num = int(block.split('<PAGE')[1].split('>')[0])
+                content = block.split('<CONTENT>\n')[1].split('\n</CONTENT>')[0].strip()
+                
+                # Skip if no meaningful content
+                if content == "No readable text found on this page.":
+                    continue
+                
+                # Check for duplicates
+                is_duplicate = False
+                for existing_page, existing_content in pages_content.items():
+                    if is_duplicate_content(content, existing_content):
+                        logger.info(f"Skipping duplicate page {page_num}, similar to page {existing_page}")
+                        is_duplicate = True
+                        break
+                
+                if is_duplicate:
+                    continue
+                
+                pages_content[page_num] = content
+                processed_pages.add(page_num)
+                
+                # Generate questions
+                questions = generate_questions_from_content(content, page_num)
+                if questions:
+                    all_questions.extend(questions)
+                    logger.info(f"Generated {len(questions)} questions for page {page_num}")
+                else:
+                    logger.info(f"No questions generated for page {page_num}")
+            
+            except Exception as e:
+                logger.error(f"Error processing page block: {e}")
                 continue
-
-            seen_pages[page_num] = page_content
-            questions = generate_questions_for_page(f"<PAGE{page_num}>\n<CONTENT_FROM_OCR>\n{page_content}\n</CONTENT_FROM_OCR>\n</PAGE{page_num}>", page_num)
-            all_questions.extend(questions)
-
-        for page_num in range(1, total_pages + 1):
-            if page_num not in seen_pages:
-                logger.info(f"Generating questions for missing page {page_num}")
-                questions = generate_questions_for_page(f"<PAGE{page_num}>\n<CONTENT_FROM_OCR>\nMissing or short content\n</CONTENT_FROM_OCR>\n</PAGE{page_num}>", page_num)
-                all_questions.extend(questions)
-
+        
+        # Remove duplicate questions
+        unique_questions = []
+        seen_questions = set()
+        
+        for q in all_questions:
+            question_key = (q["text"].lower(), tuple(opt["text"].lower() for opt in q["options"]))
+            if question_key not in seen_questions:
+                seen_questions.add(question_key)
+                unique_questions.append(q)
+            else:
+                logger.info(f"Removed duplicate question: {q['text'][:50]}...")
+        
+        logger.info(f"Final results: {len(unique_questions)} unique questions from {len(processed_pages)} pages")
+        
         return JSONResponse({
-            "questions": all_questions,
-            "message": "Questions generated successfully"
+            "questions": unique_questions,
+            "total_pages": total_pages,
+            "processed_pages": len(processed_pages),
+            "total_questions": len(unique_questions),
+            "message": f"Successfully generated {len(unique_questions)} questions from {len(processed_pages)} pages"
         })
+        
     except Exception as e:
         logger.error(f"Error in generate_quiz: {e}")
         return JSONResponse({
             "error": str(e),
             "questions": [],
             "message": "Failed to generate questions"
-        })
+        }, status_code=500)
 
-# Add an endpoint for the root path
+# Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Quiz Generator API! Use POST /generate-quiz to generate questions from a PDF."}
+    return {
+        "message": "Enhanced Quiz Generator API v2.0",
+        "features": [
+            "Advanced OCR text extraction",
+            "Comprehensive text cleaning",
+            "AI-powered question generation",
+            "Duplicate detection",
+            "Content quality analysis"
+        ],
+        "usage": "POST /generate-quiz with PDF file"
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # Run the server on port 8000
+    uvicorn.run(app, host="0.0.0.0", port=8000)
