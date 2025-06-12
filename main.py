@@ -24,29 +24,28 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ===== تهيئة محسنة لـ Gemini API =====
+
 def initialize_gemini():
     """
-    تهيئة محسنة لـ Gemini API مع معالجة أفضل للأخطاء
+   
     """
     try:
-        # ===== ضع API Key الصحيح هنا =====
-        # احصل عليه من: https://makersuite.google.com/app/apikey
-        API_KEY = "AIzaSyAYfX0WJA2FXTeVw05l847TKw1Z_X2NnKQ"  # ⚠️ استبدل هذا بمفتاحك الصحيح
+       
+        API_KEY = "AIzaSyAYfX0WJA2FXTeVw05l847TKw1Z_X2NnKQ"
         
-        # أو استخدم متغير البيئة
+       
         api_key = os.getenv("GOOGLE_API_KEY", API_KEY)
         
-        # تحقق من صحة المفتاح
+       
         if not api_key or "YOUR_ACTUAL_API_KEY_HERE" in api_key:
-            logger.error("❌ Please set a valid Google API key!")
+            logger.error(" Please set a valid Google API key!")
             logger.error("Get your key from: https://makersuite.google.com/app/apikey")
             return None
         
-        # تهيئة Gemini
+       
         genai.configure(api_key=api_key)
         
-        # إعدادات التوليد
+       
         generation_config = {
             "temperature": 0.4,
             "top_p": 0.9,
@@ -55,26 +54,26 @@ def initialize_gemini():
             "response_mime_type": "text/plain"
         }
         
-        # إنشاء الموديل
+      
         model = GenerativeModel("gemini-1.5-flash", generation_config=generation_config)
         
-        # اختبار الاتصال
+     
         try:
             test_response = model.generate_content("Say 'Connected' if you can read this.")
             if test_response and test_response.text:
-                logger.info("✅ Gemini API initialized successfully!")
+                logger.info(" Gemini API initialized successfully!")
                 return model
             else:
                 raise Exception("No response from API")
         except Exception as test_error:
-            logger.error(f"❌ API connection test failed: {test_error}")
+            logger.error(f" API connection test failed: {test_error}")
             return None
             
     except Exception as e:
-        logger.error(f"❌ Failed to initialize Gemini API: {e}")
+        logger.error(f" Failed to initialize Gemini API: {e}")
         return None
 
-# تهيئة الموديل عند بدء التطبيق
+
 model = None
 
 @app.on_event("startup")
@@ -82,7 +81,7 @@ async def startup_event():
     global model
     model = initialize_gemini()
     if not model:
-        logger.error("💥 Application started without valid Gemini API connection!")
+        logger.error(" Application started without valid Gemini API connection!")
 
 # Enhanced function to clean extracted text from OCR errors
 def clean_extracted_text(text):
