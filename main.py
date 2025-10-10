@@ -55,7 +55,7 @@ def initialize_gemini():
         }
         
       
-        model = GenerativeModel("gemini-1.5-flash", generation_config=generation_config)
+        model = GenerativeModel("gemini-2.0-flash", generation_config=generation_config)
         
      
         try:
@@ -334,7 +334,7 @@ def generate_ai_questions(content: str, page_num: int, content_analysis: Dict) -
     global model
     
     if not model:
-        logger.error("❌ Gemini model not initialized!")
+        logger.error(" Gemini model not initialized!")
         return []
     
     try:
@@ -684,3 +684,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+
