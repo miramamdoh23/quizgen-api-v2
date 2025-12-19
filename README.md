@@ -73,3 +73,9 @@ Example request:
 - URL: http://0.0.0.0:8000/generate-quiz
 - Body (form-data):
   - file: [your_pdf_file.pdf]
+ 
+- ##  Project Demo Video
+
+ **Watch the full demo here:**  
+ https://youtu.be/BddDLzikh78
+
