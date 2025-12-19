@@ -1,3 +1,8 @@
+##  Project Demo
+
+[![Project Demo Video](https://img.youtube.com/vi/BddDLzikh78/0.jpg)](https://youtu.be/BddDLzikh78)
+
+
 # QuizGen API
 
 This is a FastAPI-based application for generating quizzes from PDF documents.
@@ -74,8 +79,3 @@ Example request:
 - Body (form-data):
   - file: [your_pdf_file.pdf]
  
-- ##  Project Demo Video
-
- **Watch the full demo here:**  
- https://youtu.be/BddDLzikh78
-
