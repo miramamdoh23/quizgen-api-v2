@@ -1,7 +1,5 @@
-# ============================================================================
 # Quiz Generator API 
 # Secure and optimized API for generating quiz questions from PDFs
-# ============================================================================
 
 import os
 import io
@@ -31,9 +29,8 @@ import numpy as np
 import google.generativeai as genai
 from google.generativeai import GenerativeModel
 
-# ============================================================================
+
 # 1. Application Settings
-# ============================================================================
 
 class Settings(BaseSettings):
     """Centralized application configuration"""
@@ -75,9 +72,7 @@ except Exception as e:
     print(" Make sure you have a .env file with GOOGLE_API_KEY")
     raise
 
-# ============================================================================
 # 2. Data Models (Pydantic)
-# ============================================================================
 
 class QuestionOption(BaseModel):
     """Single question option"""
@@ -126,9 +121,9 @@ class ErrorResponse(BaseModel):
     error: str
     details: Optional[str] = None
 
-# ============================================================================
+
 # 3. Logging Configuration
-# ============================================================================
+
 
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
@@ -136,9 +131,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ============================================================================
+
 # 4. Gemini AI Service
-# ============================================================================
 
 class GeminiService:
     """Secure management of Gemini AI connections"""
@@ -223,9 +217,7 @@ def get_gemini_service() -> GeminiService:
     """Dependency injection for Gemini service"""
     return gemini_service
 
-# ============================================================================
 # 5. Text and Image Processing
-# ============================================================================
 
 # Pre-compile regex patterns for performance
 PATTERNS = {
@@ -288,9 +280,9 @@ def preprocess_image(image: Image.Image) -> Image.Image:
         logger.warning(f"Image preprocessing failed: {e}")
         return image
 
-# ============================================================================
+
 # 6. PDF Text Extraction
-# ============================================================================
+
 
 async def extract_text_from_pdf(
     file_bytes: bytes,
@@ -365,9 +357,8 @@ async def extract_text_from_pdf(
         logger.error(f"Text extraction error: {e}")
         raise HTTPException(422, f"Failed to extract text from PDF: {str(e)}")
 
-# ============================================================================
+
 # 7. Question Generation
-# ============================================================================
 
 def analyze_content(content: str) -> Dict[str, Any]:
     """Analyze content quality for question generation"""
@@ -517,9 +508,8 @@ def parse_ai_response(response: str, page_num: int) -> List[Question]:
     
     return questions
 
-# ============================================================================
+
 # 8. FastAPI Application
-# ============================================================================
 
 app = FastAPI(
     title="Quiz Generator API",
@@ -538,9 +528,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================================
+
 # 9. Startup/Shutdown Events
-# ============================================================================
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -558,9 +548,8 @@ async def shutdown_event():
     """Cleanup on application shutdown"""
     logger.info(" Shutting down Quiz Generator API")
 
-# ============================================================================
+
 # 10. API Endpoints
-# ============================================================================
 
 @app.get("/", tags=["Info"])
 async def root():
@@ -713,9 +702,9 @@ async def generate_quiz(
             detail=f"Error processing file: {str(e)}"
         )
 
-# ============================================================================
+
 # 11. Main Entry Point
-# ============================================================================
+
 
 if __name__ == "__main__":
     import uvicorn
@@ -727,3 +716,4 @@ if __name__ == "__main__":
         reload=settings.debug,
         log_level="info"
     )
+
