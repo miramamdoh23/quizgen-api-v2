@@ -235,6 +235,3 @@ This project is provided as a portfolio demonstration and educational resource.
 
 Built to demonstrate professional FastAPI development, AI integration, and document processing capabilities for quiz generation applications.
 
----
-
-**Built by Mira Mamdoh**
