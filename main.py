@@ -696,7 +696,7 @@ async def generate_quiz(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Error in generate_quiz: {e}")
+        logger.error(f" Error in generate_quiz: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Error processing file: {str(e)}"
@@ -716,4 +716,5 @@ if __name__ == "__main__":
         reload=settings.debug,
         log_level="info"
     )
+
 
