@@ -368,13 +368,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
 ---
-
 ## Acknowledgments
 
 Built to demonstrate professional FastAPI development, AI integration, and document processing capabilities for intelligent quiz generation applications.
-
----
-
-**Built by Mira Mamdoh**
